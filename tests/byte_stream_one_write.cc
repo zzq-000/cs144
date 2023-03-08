@@ -10,7 +10,6 @@ int main() {
     try {
         {
             ByteStreamTestHarness test{"write-end-pop", 15};
-
             test.execute(Write{"cat"});
 
             test.execute(InputEnded{false});
@@ -46,7 +45,7 @@ int main() {
 
         {
             ByteStreamTestHarness test{"write-pop-end", 15};
-
+            cout<<"hello1"<<endl;
             test.execute(Write{"cat"});
 
             test.execute(InputEnded{false});
@@ -81,6 +80,7 @@ int main() {
 
         {
             ByteStreamTestHarness test{"write-pop2-end", 15};
+            cout<<"hello0"<<endl;
 
             test.execute(Write{"cat"});
 

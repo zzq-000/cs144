@@ -33,13 +33,10 @@ size_t ByteStream::write(const string &data) {
             _bytes_in++;
             _bytes_written++;
         }
-        if (_bytes_in > 0) {
-            _output_ended = false;
-        }
+        // if (_bytes_in > 0) {
+        //     _output_ended = false;
+        // }
         return bytes_written;
-    }
-    if (buffer_empty()) {
-        _output_ended = true;
     }
 
     return 0;
@@ -66,7 +63,7 @@ void ByteStream::pop_output(const size_t len) {
         _bytes_in--;
         pop_size--;
     }
-    if (buffer_empty()) {
+    if (buffer_empty() && input_ended()) {
         _output_ended = true;
     }
 }
