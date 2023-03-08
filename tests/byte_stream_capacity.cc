@@ -35,13 +35,21 @@ int main() {
         }
 
         {
+            // cout<<"hello0"<<endl;
+
             ByteStreamTestHarness test{"overwrite-clear-overwrite", 2};
 
             test.execute(Write{"cat"}.with_bytes_written(2));
+            // cout<<"hello1"<<endl;
+
             test.execute(Pop{2});
+            // cout<<"hello2"<<endl;
             test.execute(Write{"tac"}.with_bytes_written(2));
+            // cout<<"hello3"<<endl;
 
             test.execute(InputEnded{false});
+            // cout<<"hello4"<<endl;
+
             test.execute(BufferEmpty{false});
             test.execute(Eof{false});
             test.execute(BytesRead{2});
@@ -52,6 +60,7 @@ int main() {
         }
 
         {
+            // cout<<"hello"<<endl;
             ByteStreamTestHarness test{"overwrite-pop-overwrite", 2};
 
             test.execute(Write{"cat"}.with_bytes_written(2));

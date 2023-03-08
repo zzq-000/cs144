@@ -9,6 +9,7 @@ using namespace std;
 int main() {
     try {
         {
+            // cout<<"hello"<<endl;
             ByteStreamTestHarness test{"construction", 15};
             test.execute(InputEnded{false});
             test.execute(BufferEmpty{true});
@@ -20,6 +21,8 @@ int main() {
         }
 
         {
+            // cout<<"hello1"<<endl;
+
             ByteStreamTestHarness test{"construction-end", 15};
             test.execute(EndInput{});
             test.execute(InputEnded{true});
