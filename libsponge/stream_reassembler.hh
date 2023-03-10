@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <queue>
 
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
@@ -13,12 +14,32 @@
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-    std::vector<std::pair<std::string, uint64_t>> _substring_pool;
-    size_t _assembled_bytes; // 1. assembled bytes 
-    // 2. if the index of a substring is less than the _assembled_bytes, 
-    // the slice is possible to be pushed into the bytestream
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
+
+    class cmp_pair {
+      public:
+      bool operator()(std::pair<std::string, size_t> &p1, std::pair<std::string, size_t> &p2) {
+        return p1.second > p2.second;
+      }
+    };
+    std::priority_queue<
+      std::pair<std::string, size_t>, 
+      std::vector<std::pair<std::string, size_t>>,
+      cmp_pair>
+      _substring_pool;
+
+    
+    size_t _pool_size;
+    size_t _assembled_bytes; // 1. assembled bytes 
+
+    // 2. if the index of a substring is less than the _assembled_bytes, 
+    // the slice is possible to be pushed into the bytestream
+    bool _end;
+    
+
+    size_t judge(const std::string &data, const size_t index);
+    size_t remain_capacity();
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
