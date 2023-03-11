@@ -1,12 +1,12 @@
 #include "wrapping_integers.hh"
-
+#include <iostream>
 // Dummy implementation of a 32-bit wrapping integer
 
 // For Lab 2, please replace with a real implementation that passes the
 // automated checks run by `make check_lab2`.
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
@@ -15,7 +15,8 @@ using namespace std;
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
     DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    uint32_t bias = static_cast<uint32_t>(n % (static_cast<uint64_t>(UINT32_MAX) + 1));
+    return isn + bias;
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -30,5 +31,16 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    uint32_t length = n - isn;
+
+    size_t div = (checkpoint > length? checkpoint - length: length - checkpoint)/
+     (static_cast<uint64_t>(UINT32_MAX) + 1);
+
+    uint64_t left = static_cast<uint64_t>(div) * (static_cast<uint64_t>(UINT32_MAX) + 1) + length;
+    uint64_t right = static_cast<uint64_t>(div + 1) * (static_cast<uint64_t>(UINT32_MAX) + 1) + length;
+
+    if (checkpoint <= (right - left) / 2 + left) {
+        return left;
+    }
+    return right;
 }
