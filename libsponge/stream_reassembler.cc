@@ -46,6 +46,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         // cout<<"remain capacity(): "<< remain_capacity()<<endl;
         // cout<<"datasssssssssssssssssss: "<< remain_capacity()<<endl;
         _output.write(data.substr(write_begin, write_length));
+
         _assembled_bytes += write_length;
         // if (write_length == data.size() - write_begin) {
         _end = _end || eof;
@@ -56,10 +57,10 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         while (!_substring_pool.empty()) {
             auto slice = _substring_pool.top();
             result = judge(slice.first, slice.second);
-            if (slice.first == "b" && slice.second == 1) {
-                cout << "b1" << endl;
-                cout << "_end: " << _end << endl;
-            }
+            // if (slice.first == "b" && slice.second == 1) {
+            //     cout << "b1" << endl;
+            //     cout << "_end: " << _end << endl;
+            // }
             if (result == DISCARD) {
                 _substring_pool.pop();
                 _pool_size -= slice.second;
