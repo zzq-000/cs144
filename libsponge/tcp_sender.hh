@@ -36,6 +36,9 @@ class TCPSender {
     bool _get_ack{false};
     size_t _byte_flight{0};
     uint16_t _window{0};
+    bool _fin_sent{false};
+    bool _fin_acked{false};
+    uint64_t _acked_no{0};
     // WrappingInt32 _ackno{0};
     TCPSegment build_segment(std::string &data, bool syn, bool fin, WrappingInt32& seqno);
   public:

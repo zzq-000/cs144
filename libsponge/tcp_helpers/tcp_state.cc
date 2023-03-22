@@ -24,8 +24,11 @@ string TCPState::state_summary(const TCPSender &sender) {
     } else if (not sender.stream_in().eof()) {
         return TCPSenderStateSummary::SYN_ACKED;
     } else if (sender.next_seqno_absolute() < sender.stream_in().bytes_written() + 2) {
+        // cout << sender.stream_in().bytes_written() + 2 << endl;
+        // cout << sender.next_seqno_absolute() << endl;
         return TCPSenderStateSummary::SYN_ACKED;
     } else if (sender.bytes_in_flight()) {
+        // cout << "ggg" << sender.bytes_in_flight() << endl;;
         return TCPSenderStateSummary::FIN_SENT;
     } else {
         return TCPSenderStateSummary::FIN_ACKED;
