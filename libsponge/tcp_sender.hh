@@ -4,6 +4,7 @@
 #include "byte_stream.hh"
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
+#include "tcp_timer.hh"
 #include "wrapping_integers.hh"
 
 #include <functional>
@@ -39,6 +40,11 @@ class TCPSender {
     bool _fin_sent{false};
     bool _fin_acked{false};
     uint64_t _acked_no{0};
+    Timer timer;
+    uint64_t _last_retran_seq{0};
+    unsigned int _consecutive_retransmissions_counter{0};
+    unsigned int _consecutive_retransmissions{0};
+    bool _send_syn{false};
     // WrappingInt32 _ackno{0};
     TCPSegment build_segment(std::string &data, bool syn, bool fin, WrappingInt32& seqno);
   public:

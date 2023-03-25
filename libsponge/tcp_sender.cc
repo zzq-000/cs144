@@ -2,6 +2,7 @@
 
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
+// #include "tcp_timer.hh"
 #include <random>
 
 // Dummy implementation of a TCP sender
@@ -20,32 +21,37 @@ using namespace std;
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
-    , _stream(capacity) {}
+    , _stream(capacity)
+    ,timer(_initial_retransmission_timeout) {}
 
 uint64_t TCPSender::bytes_in_flight() const { return _byte_flight; }
 
 void TCPSender::fill_window() {
-    if (!_get_ack) {
-        // cout<<"dddd"<<endl;
+    if (!_send_syn) {
+        cout << "syn: " << endl;
         string data = "";
         TCPSegment seg = build_segment(data, true, false, _isn);
         _next_seqno += 1;
         _byte_flight += 1;
-        // cout << next_seqno_absolute() << endl;;
-        // cout << bytes_in_flight() << endl;
-        // cout << "balala";
         _segments_out.push(seg);
-        // _outstanding_segments.push(seg);
+        _send_syn = true;
     } else {
+        cout << "after syn: " << endl;
+        // 检查是否有超时的packet
+        // 每次发送包时，看Timer是否启动，若没有，则启动timer
         // if (!_window) return;
         // cout << _window << endl;
-        if (_fin_acked) return;
+        // cout << _fin_sent << endl;
+        if (_fin_sent) return; //会话已结束
         string payload("");
         bool fin = false;
-        size_t window_size = max(static_cast<size_t>(1),static_cast<size_t>(_window));
+        //与1取max：如果接收方宣布窗口为空，自我发送方仍要尝试探测
+        size_t write_size = static_cast<size_t>(std::max(_window, static_cast<uint16_t>(1))) - bytes_in_flight();
+        if (write_size == 0) return;
         size_t buffer_size = _stream.buffer_size();
+        // if (buffer_size == 0) return;
         if (_stream.input_ended()) {
-            if (buffer_size <= window_size){
+            if (buffer_size <= write_size){
                 // cout << "ddd" << endl;
                 payload = _stream.read(
                     min(buffer_size, static_cast<size_t>(TCPConfig::MAX_PAYLOAD_SIZE - 1)));
@@ -53,12 +59,12 @@ void TCPSender::fill_window() {
                 fin = _stream.buffer_empty() ? true : false;
                 // cout << fin << endl;
             } else {
-                payload = _stream.read(min(window_size, 
+                payload = _stream.read(min(write_size, 
                 static_cast<size_t>(TCPConfig::MAX_PAYLOAD_SIZE)));
             }
         } else {
             payload = _stream.read(
-                min(min(buffer_size, window_size),
+                min(min(buffer_size, write_size),
                 static_cast<size_t>(TCPConfig::MAX_PAYLOAD_SIZE)));
         }
         if (!payload.size() && !fin) return;
@@ -67,15 +73,17 @@ void TCPSender::fill_window() {
         size_t data_len = seg.length_in_sequence_space();
         WrappingInt32 seqno = wrap(_next_seqno, _isn);
         seg.header().seqno = seqno;
+        cout << "data_len: " << data_len << endl;
         // cout << "_next_seqno" << _next_seqno << endl;
         _next_seqno += data_len;
         // cout << "_next_seqno" << _next_seqno << endl;
-        cout << "fill_window: _byte_flight: " << _byte_flight << endl;
+        // cout << "fill_window: _byte_flight: " << _byte_flight << endl;
 
         _byte_flight += data_len;
-        cout << "fill_window: _byte_flight: " << _byte_flight << endl;
+        // cout << "fill_window: _byte_flight: " << _byte_flight << endl;
 
         _segments_out.push(seg);
+        timer.push(seg);
     }
 }
 
@@ -90,10 +98,10 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     _window = window_size;
     // cout << ackno.raw_value() << " " << _isn.raw_value() << endl;
     uint64_t abs_seq = unwrap(ackno, _isn, _next_seqno);
-    cout << "_next_seqno: " << _next_seqno << endl;
-    cout << "abs_seqno: " << abs_seq << endl;
-    cout << "_acked_seqno: " << _acked_no << endl;
-    cout << "_byte_flight: " << _byte_flight << endl;
+    // cout << "_next_seqno: " << _next_seqno << endl;
+    // cout << "abs_seqno: " << abs_seq << endl;
+    // cout << "_acked_seqno: " << _acked_no << endl;
+    // cout << "_byte_flight: " << _byte_flight << endl;
 
     //ackno之前的信息已被确认过，所以这次需要忽略
     if (abs_seq <= _acked_no) return;
@@ -103,21 +111,14 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     // cout << _byte_flight << endl;
     // cout << abs_seq - _next_seqno << endl;
     _byte_flight -= abs_seq - _acked_no;
-    cout << "_byte_flight: " << _byte_flight << endl;
-    cout << endl;
+    // cout << "_byte_flight: " << _byte_flight << endl;
+    // cout << endl;
     _acked_no = abs_seq;
     // cout << "_byte_flite: " << _byte_flight << endl;
     if(_fin_sent) _fin_acked = true;
     // cout << _fin_sent << " " << _fin_acked << endl; 
-    while (!_outstanding_segments.empty()) {
-        const TCPSegment seg = _outstanding_segments.front();
-        uint64_t ack_data = seg.length_in_sequence_space();
-        if (unwrap(ackno, _isn, _next_seqno) - unwrap(seg.header().seqno, _isn, _next_seqno) >= ack_data) {
-            _outstanding_segments.pop();
-            // cout << "bbb" << endl;
-        } else {
-            break;
-        }
+    if(timer.clean(ackno, _isn, _next_seqno)) {
+        _consecutive_retransmissions = 0;
     }
 
 
@@ -132,10 +133,43 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     DUMMY_CODE(ms_since_last_tick);
+    if (timer.tick(ms_since_last_tick)){
+        // 未超时
+        // _consecutive_retransmissions = std::max(_consecutive_retransmissions, _consecutive_retransmissions_counter);
+        // _consecutive_retransmissions_counter = 0;
+        // _last_retran = false;
+    }else {
+        // 超时
+        // if (!_last_retran) _last_retran = true;
+        // _consecutive_retransmissions += 1;
 
+        uint64_t seg_seq;
+        // cout << timer.get_RTO() << endl;
+        if (!_get_ack) {
+            string data = "";
+            TCPSegment seg = build_segment(data, true, false, _isn);
+            _segments_out.push(seg);
+            seg_seq = unwrap(seg.header().seqno, _isn, _next_seqno);
+        } else {
+            bool has_data;
+            TCPSegment seg = timer.get_retrans_seg(has_data);
+            if (has_data) {
+                _segments_out.push(seg);
+            }
+            seg_seq = unwrap(seg.header().seqno, _isn, _next_seqno);
+        }
+        if (seg_seq == _last_retran_seq) {
+            _consecutive_retransmissions_counter += 1;
+            _consecutive_retransmissions = std::max(_consecutive_retransmissions, _consecutive_retransmissions_counter);
+        } else {
+            _last_retran_seq = seg_seq;
+            _consecutive_retransmissions_counter = 1;
+        }
+        // cout << "con: " << _consecutive_retransmissions << endl;
+    }
 }
 
-unsigned int TCPSender::consecutive_retransmissions() const { return {}; }
+unsigned int TCPSender::consecutive_retransmissions() const { return _consecutive_retransmissions; }
 
 void TCPSender::send_empty_segment() {}
 
