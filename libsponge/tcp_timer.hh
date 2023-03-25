@@ -21,10 +21,14 @@ class Timer {
         _timestamp = 0;  // TODO
     }
     bool empty() const { return _outstanding_segs.empty(); }
-    bool tick(size_t  ticks) {
+    bool tick(size_t  ticks, uint16_t window) {
         _timestamp += ticks;
         if (_timestamp >= _RTO) {
-            set_RTO();
+            
+            if (window)
+                set_RTO();
+            std::cout << window << std::endl;
+            _timestamp = 0;
             return false;
         }
         // 未超时
@@ -62,7 +66,6 @@ class Timer {
     void push(const TCPSegment& seg) { _outstanding_segs.push(seg); }
     void set_RTO() {
          _RTO *= 2; 
-         _timestamp = 0;
     }
     unsigned int get_RTO() { return _RTO; }
     const TCPSegment get_retrans_seg(bool & has_data) {

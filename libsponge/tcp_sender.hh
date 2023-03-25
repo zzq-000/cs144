@@ -36,7 +36,7 @@ class TCPSender {
     uint64_t _next_seqno{0};
     bool _get_ack{false};
     size_t _byte_flight{0};
-    uint16_t _window{0};
+    uint16_t _window{1};// 随意设置的
     bool _fin_sent{false};
     bool _fin_acked{false};
     uint64_t _acked_no{0};
