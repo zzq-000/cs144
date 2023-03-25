@@ -16,10 +16,6 @@ class Timer {
         _started = true;
         _timestamp = 0;
     }
-    void stop() {
-        _started = false;
-        _timestamp = 0;  // TODO
-    }
     bool empty() const { return _outstanding_segs.empty(); }
     bool tick(size_t  ticks, uint16_t window) {
         _timestamp += ticks;
@@ -34,11 +30,6 @@ class Timer {
         // 未超时
         return true;
     }
-    void reset() {
-        _timestamp = 0;
-        _started = true;
-    }
-
     //! \brief indicate whether should reset consecutive retransmissions
     bool clean(const WrappingInt32 ackno, const WrappingInt32 isn, uint64_t next_seqno) {
         uint64_t abs_seq = unwrap(ackno, isn, next_seqno);
@@ -67,7 +58,7 @@ class Timer {
     void set_RTO() {
          _RTO *= 2; 
     }
-    unsigned int get_RTO() { return _RTO; }
+    // unsigned int get_RTO() { return _RTO; }
     const TCPSegment get_retrans_seg(bool & has_data) {
         if (!empty()) {
             has_data = true;
